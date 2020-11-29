@@ -43,7 +43,8 @@ times.pop(-1)
 headers2 = {'PRIVATE-TOKEN': ''}
 gitlabback = '/api/v4/projects/137/search?scope=commits&search='
 gitlabfront = '/api/v4/projects/161/search?scope=commits&search='
-gitlabadmin = '/api/v4/projects/137/search?scope=commits&search='
+gitlabadmin = '/api/v4/projects/162/search?scope=commits&search='
+gitlabtopologic = '/api/v4/projects/182/search?scope=commits&search='
 
 branches=tasks.copy()
 
@@ -131,6 +132,16 @@ def adminsearch(i):
                         branches.insert(taskindex, 'DEVELOP')
     return print('Done ' + i)
 
+def topologicsearch(i):
+    taskindex = branches.index(i)
+    if 'MIRA' in i:
+        res = requests.get(gitlabtopologic + i + '&ref=development', headers=headers2)
+        response = res.json()
+        if response:
+            branches.pop(taskindex)
+            branches.insert(taskindex, 'TOPOLOGIC')
+    return print('Done ' + i)
+
 
 print('Starting parsing Backend...')
 with ThreadPoolExecutor() as executor:
@@ -146,6 +157,11 @@ print('Starting parsing Admin...')
 with ThreadPoolExecutor() as executor:
     executor.map(adminsearch, branches)
 print('End parsing Admin.')
+
+print('Starting parsing Topologic...')
+with ThreadPoolExecutor() as executor:
+    executor.map(topologicsearch, branches)
+print('End parsing Topologic.')
 
 
 
@@ -282,13 +298,16 @@ for cell in range1:
                     wks.format(cell.address, {"backgroundColor": {"red": 25.0, "green": 0.0, "blue": 0.0}})
                     time.sleep(1)
                 else:
-                    wks.format(cell.address, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
-                    time.sleep(1)
+                    if 'TOPOLOGIC' in cell.value:
+                        wks.format(cell.address, {"backgroundColor": {"red": 0.0, "green": 25.0, "blue": 0.0}})
+                        time.sleep(1)
+                    else:
+                        wks.format(cell.address, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
+                        time.sleep(1)
 
 
 range1 = wks2.range('J1:J'+str(lastdf2.index[-1]))
 for cell in range1:
-    print(cell.value)
     if 'PRODUCTION' in cell.value:
         wks2.format(cell.address, {"backgroundColor": {"red": 0.0, "green": 25.0, "blue": 0.0}})
         time.sleep(1)
@@ -305,5 +324,9 @@ for cell in range1:
                     wks2.format(cell.address, {"backgroundColor": {"red": 25.0, "green": 0.0, "blue": 0.0}})
                     time.sleep(1)
                 else:
-                    wks2.format(cell.address, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
-                    time.sleep(1)
+                    if 'TOPOLOGIC' in cell.value:
+                        wks2.format(cell.address, {"backgroundColor": {"red": 0.0, "green": 25.0, "blue": 0.0}})
+                        time.sleep(1)
+                    else:
+                        wks2.format(cell.address, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
+                        time.sleep(1)
