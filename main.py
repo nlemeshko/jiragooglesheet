@@ -1,4 +1,5 @@
 import requests
+import time
 import pandas as pd
 import gspread
 from concurrent.futures import ThreadPoolExecutor
@@ -19,7 +20,7 @@ t = datetime.now()
 m=t.strftime("%b")
 d=t.strftime("%d")
 
-jira = '/secure/ConfigureReport!excelView.jspa?htmlExport=true&startDate=1%2FFeb%2F20&endDate='+ d + '%2F' + m + '%2F20&reportKey=jira-timesheet-plugin:report&projectid=13402&weekends=&showDetails=&monthView=true&sum=week&reportingDay=1'
+jira = '/secure/ConfigureReport!excelView.jspa?htmlExport=true&startDate=1%2FFeb%2F20&endDate='+ d + '%2F' + m + '%2F20&reportKey=jira-timesheet-plugin:report&projectid=13402&weekends=&showDetails=&monthView=true&sum=week&sumSubTasks=true&reportingDay=1'
 print('Starting download jira excel...')
 headers = {'Content-Type': 'application/json', 'Authorization': 'Basic '}
 r = requests.get(jira, headers=headers, stream=True)
@@ -52,25 +53,25 @@ def backendsearch(i):
         response = res.json()
         if response:
             branches.pop(taskindex)
-            branches.insert(taskindex,'production')
+            branches.insert(taskindex,'PRODUCTION')
         else:
             res = requests.get(gitlabback + i + '&ref=master', headers=headers2)
             response = res.json()
             if response:
                 branches.pop(taskindex)
-                branches.insert(taskindex, 'master')
+                branches.insert(taskindex, 'MASTER')
             else:
                 res = requests.get(gitlabback + i + '&ref=test', headers=headers2)
                 response = res.json()
                 if response:
                     branches.pop(taskindex)
-                    branches.insert(taskindex, 'test')
+                    branches.insert(taskindex, 'TEST')
                 else:
                     res = requests.get(gitlabback + i + '&ref=develop', headers=headers2)
                     response = res.json()
                     if response:
                         branches.pop(taskindex)
-                        branches.insert(taskindex, 'develop')
+                        branches.insert(taskindex, 'DEVELOP')
         return print('Done '+i)
 
 def frontsearch(i):
@@ -80,25 +81,25 @@ def frontsearch(i):
             response = res.json()
             if response:
                 branches.pop(taskindex)
-                branches.insert(taskindex, 'production')
+                branches.insert(taskindex, 'PRODUCTION')
             else:
                 res = requests.get(gitlabfront + i + '&ref=master', headers=headers2)
                 response = res.json()
                 if response:
                     branches.pop(taskindex)
-                    branches.insert(taskindex, 'production')
+                    branches.insert(taskindex, 'MASTER')
                 else:
                     res = requests.get(gitlabfront + i + '&ref=test', headers=headers2)
                     response = res.json()
                     if response:
                         branches.pop(taskindex)
-                        branches.insert(taskindex, 'production')
+                        branches.insert(taskindex, 'TEST')
                     else:
-                        res = requests.get(gitlabfront + backend[item] + '&ref=develop', headers=headers2)
+                        res = requests.get(gitlabfront + i + '&ref=develop', headers=headers2)
                         response = res.json()
                         if response:
                             branches.pop(taskindex)
-                            branches.insert(taskindex, 'production')
+                            branches.insert(taskindex, 'DEVELOP')
         return print('Done ' +i)
 
 
@@ -109,25 +110,25 @@ def adminsearch(i):
         response = res.json()
         if response:
             branches.pop(taskindex)
-            branches.insert(taskindex, 'production')
+            branches.insert(taskindex, 'PRODUCTION')
         else:
             res = requests.get(gitlabadmin + i + '&ref=master', headers=headers2)
             response = res.json()
             if response:
                 branches.pop(taskindex)
-                branches.insert(taskindex, 'production')
+                branches.insert(taskindex, 'MASTER')
             else:
                 res = requests.get(gitlabadmin + i + '&ref=test', headers=headers2)
                 response = res.json()
                 if response:
                     branches.pop(taskindex)
-                    branches.insert(taskindex, 'production')
+                    branches.insert(taskindex, 'TEST')
                 else:
-                    res = requests.get(gitlabadmin + backend[item] + '&ref=develop', headers=headers2)
+                    res = requests.get(gitlabadmin + i + '&ref=develop', headers=headers2)
                     response = res.json()
                     if response:
                         branches.pop(taskindex)
-                        branches.insert(taskindex, 'production')
+                        branches.insert(taskindex, 'DEVELOP')
     return print('Done ' + i)
 
 
@@ -179,6 +180,14 @@ for i in range(len(task)):
         newbranches.append('')
 
 
+for i in range(len(newtime)):
+    try:
+        newtime[i]=float(newtime[i][1:-1])
+    except Exception:
+        newtime[i] = newtime[i][1:-1]
+
+
+
 lastdf = pd.DataFrame(list(zip(task, newtime, newbranches)),
                           columns=['Task', 'Time', 'Branches'])
 
@@ -197,7 +206,8 @@ for cell in range1:
     x=x+1
 
 wks.update_cells(range1)
-
+wks.update('G1','Time')
+wks.update('H1','Branches')
 
 
 wks2=wks1.worksheet("Тех. поддержка")
@@ -219,6 +229,13 @@ for i in range(len(task2)):
         newbranches2.append(newdf.loc[newdf['Tasks'] == task2[i]]['Branches'].to_string(index=False))
     else:
         newbranches2.append('')
+
+for i in range(len(newtime2)):
+    try:
+        newtime2[i]=float(newtime2[i][1:-1])
+    except Exception:
+        newtime2[i] = newtime2[i][1:-1]
+
 
 
 lastdf2 = pd.DataFrame(list(zip(task2, newtime2, newbranches2)),
@@ -243,3 +260,50 @@ wks2.update_cells(range1)
 
 wks2.update('I9','Time')
 wks2.update('J9','Branches')
+
+print('Starting color...')
+
+range1 = wks.range('H1:H'+str(lastdf.index[-1]))
+for cell in range1:
+    print(cell.value)
+    if 'PRODUCTION' in cell.value:
+        wks.format(cell.address, {"backgroundColor": {"red": 0.0, "green": 25.0, "blue": 0.0}})
+        time.sleep(1)
+    else:
+        if 'MASTER' in cell.value:
+            wks.format(cell.address, {"backgroundColor": {"red": 0.0, "green": 25.0, "blue": 25.0}})
+            time.sleep(1)
+        else:
+            if 'TEST' in cell.value:
+                wks.format(cell.address, {"backgroundColor": {"red": 25.0, "green": 25.0, "blue": 0.0}})
+                time.sleep(1)
+            else:
+                if 'DEVELOP' in cell.value:
+                    wks.format(cell.address, {"backgroundColor": {"red": 25.0, "green": 0.0, "blue": 0.0}})
+                    time.sleep(1)
+                else:
+                    wks.format(cell.address, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
+                    time.sleep(1)
+
+
+range1 = wks2.range('J1:J'+str(lastdf2.index[-1]))
+for cell in range1:
+    print(cell.value)
+    if 'PRODUCTION' in cell.value:
+        wks2.format(cell.address, {"backgroundColor": {"red": 0.0, "green": 25.0, "blue": 0.0}})
+        time.sleep(1)
+    else:
+        if 'MASTER' in cell.value:
+            wks2.format(cell.address, {"backgroundColor": {"red": 0.0, "green": 25.0, "blue": 25.0}})
+            time.sleep(1)
+        else:
+            if 'TEST' in cell.value:
+                wks2.format(cell.address, {"backgroundColor": {"red": 25.0, "green": 25.0, "blue": 0.0}})
+                time.sleep(1)
+            else:
+                if 'DEVELOP' in cell.value:
+                    wks2.format(cell.address, {"backgroundColor": {"red": 25.0, "green": 0.0, "blue": 0.0}})
+                    time.sleep(1)
+                else:
+                    wks2.format(cell.address, {"backgroundColor": {"red": 1, "green": 1, "blue": 1}})
+                    time.sleep(1)
